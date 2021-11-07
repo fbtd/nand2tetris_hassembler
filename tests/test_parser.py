@@ -13,11 +13,14 @@ def test_sample_prog_parse():
         {'instruction_line': 3, 'instruction_type': 'C', 'dest': 'D', 'comp': 'M'},
         {'instruction_line': 4, 'instruction_type': 'LABEL', 'label': 'SECOND_SYMBOL'},
         {'instruction_line': 4, 'instruction_type': 'C', 'comp': 'D', 'jump': 'JGT'},
+        {'instruction_line': 5, 'instruction_type': 'LABEL', 'label': 'dotty.symbol'},
         {'instruction_line': 5, 'instruction_type': 'C', 'comp': '0', 'jump': 'JMP'},
+        {'instruction_line': 6, 'instruction_type': 'LABEL', 'label': 'nummy.0'},
         {'instruction_line': 6, 'instruction_type': 'C', 'dest': 'AM', 'comp': 'M+1'},
         {'instruction_line': 7, 'instruction_type': 'C', 'dest': 'A', 'comp': 'A-1'},
         {'instruction_line': 8, 'instruction_type': 'C', 'dest': 'D', 'comp': 'D+1', 'jump': 'JLT'},
         {'instruction_line': 9, 'instruction_type': 'A', 'symbol': 'SECOND_SYMBOL'},
+        {'instruction_line': 10, 'instruction_type': 'C', 'dest': 'M', 'comp': 'D'},
     )
 
     for instruction, reference_instruction in zip(p, reference_instructions):

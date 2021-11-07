@@ -6,8 +6,10 @@ import hassembler.hassembler
         ({'instruction_type': 'A', 'value': '0'},    '0000000000000000'),
         ({'instruction_type': 'A', 'value': '1001'}, '0000001111101001'),
         ({'instruction_type': 'C', 'dest': 'M', 'comp': '1'}, '1110111111001000'),
+        ({'instruction_type': 'C', 'dest': 'M', 'comp': 'M+1'}, '1111110111001000'),
         ({'instruction_type': 'C', 'comp': 'D', 'jump': 'JGT'}, '1110001100000001'),
         ({'instruction_type': 'C', 'comp': '0', 'jump': 'JMP'}, '1110101010000111'),
+        ({'instruction_type': 'C', 'dest': 'M', 'comp': 'D'}, '1110001100001000'),
         ({'instruction_type': 'C', 'dest': 'D', 'comp': 'D+1', 'jump': 'JLT'}, '1110011111010100')
     ])
 def test_encode(instruction, expected):

@@ -2,14 +2,15 @@ import re
 
 
 _symbol = '[a-zA-Z_.$:][a-zA-Z0-9_.$:]*'
+_valid_chars = '[-+|&!01ADMJGTEQLNP]'
 patterns = (
     (f'^@(?P<symbol>{_symbol})', 'A', 1),
     (r'^@(?P<value>[0-9]+)', 'A', 1),
     (r'^@(?P<value>[0-9]+)', 'A', 1),
-    (r'^(?P<dest>.+)=(?P<comp>.+);(?P<jump>.+)', 'C', 1),
-    (r'^(?P<comp>.+);(?P<jump>.+)', 'C', 1),
-    (r'^(?P<dest>.+)=(?P<comp>.+)', 'C', 1),
-    (r'^\((?P<label>.+)\)', 'LABEL', 0),
+    (rf'^(?P<dest>{_valid_chars}+)=(?P<comp>{_valid_chars}+);(?P<jump>{_valid_chars}+)', 'C', 1),
+    (rf'^(?P<comp>{_valid_chars}+);(?P<jump>{_valid_chars}+)', 'C', 1),
+    (rf'^(?P<dest>{_valid_chars}+)=(?P<comp>{_valid_chars}+)', 'C', 1),
+    (rf'^\((?P<label>[^)]+)\)', 'LABEL', 0),
 )
 
 
