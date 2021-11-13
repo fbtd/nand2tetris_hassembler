@@ -16,7 +16,6 @@ from mockparser import MockParser
 def test_encode(instruction, expected):
     assert hassembler.hassembler.encode(instruction) == expected
 
-
 def test_make_symbol_table():
     reference_instructions = [
         {'instruction_line': 0, 'instruction_type': 'A', 'value': '0'},
