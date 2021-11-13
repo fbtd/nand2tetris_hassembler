@@ -1,0 +1,4 @@
+// this file contain an invalid instruction on line 3
+push constant 10
+do_stuff()
+push constant 10

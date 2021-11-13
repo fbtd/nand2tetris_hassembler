@@ -1,0 +1,11 @@
+// comment
+push constant 510
+pop temp 6 // inline comment
+
+push that 5
+    add
+push this 1
+push this 1
+sub
+push temp 6
+add

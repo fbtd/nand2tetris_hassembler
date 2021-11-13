@@ -1,11 +1,11 @@
 import pytest
 from pathlib import Path
-from hassembler.parser import Parser
+from hassembler.parser import AsmParser
 
 test_prog = Path(__file__).parent / 'prog.asm'
 
 def test_sample_prog_parse():
-    p = Parser(test_prog)
+    p = AsmParser(test_prog)
     reference_instructions = (
         {'instruction_line': 0, 'instruction_type': 'A', 'value': '0'},
         {'instruction_line': 1, 'instruction_type': 'A', 'value': '1000'},
@@ -23,11 +23,22 @@ def test_sample_prog_parse():
         {'instruction_line': 10, 'instruction_type': 'C', 'dest': 'M', 'comp': 'D'},
     )
 
+    assert len(p) == len(reference_instructions)
+
     for instruction, reference_instruction in zip(p, reference_instructions):
         assert instruction == reference_instruction
 
+test_bad_prog = Path(__file__).parent / 'bad_prog.asm'
+
+def test_bad_instruction():
+    p = AsmParser(test_bad_prog)
+    _ = next(p)
+    with pytest.raises(RuntimeError):
+        _ = next(p)
+
+
 def test_rewind():
-    p = Parser(test_prog)
+    p = AsmParser(test_prog)
     _ = next(p)
     _ = next(p)
     _ = next(p)

@@ -1,4 +1,4 @@
-from hassembler.parser import Parser
+from hassembler.parser import AsmParser
 import pathlib
 import sys
 
@@ -84,7 +84,7 @@ def make_symbol_table(parser):
 def main(source_file=None):
     if source_file is None:
         source_file = sys.argv[1]
-    parser = Parser(source_file)
+    parser = AsmParser(source_file)
     symbol_table = make_symbol_table(parser)
 
     dest_file = pathlib.Path(source_file).with_suffix('.hack')
