@@ -25,30 +25,34 @@ def encode_segment_to_d(segment, index, static_prefix=None):
         if static_prefix is None:
             raise RuntimeError('missing static prefix')
         register = f'{static_prefix}.{index}'
-    return [f'@{register}', 'D=A']
+    return [f'@{register}', 'D=M']
 
 def encode_constant_to_d(constant):
     return [f'@{constant}', 'D=A']
 
 _push_d = '@SP, A=M, M=D, @SP, M=M+1'.split(', ')
-_pop_to_d = '@SP, A=M, D=M, @SP M=M-1'.split(', ')
+_pop_to_d = '@SP, M=M-1, A=M, D=M'.split(', ')
+_pop_to_a = '@SP, M=M-1, A=M, A=M'.split(', ')
 
 def encode(vm_instruction, static_prefix=None):
     asm_instruction = [f'// {vm_instruction}']
     operator = vm_instruction['operation']
     segment = vm_instruction.get('segment')
     index = vm_instruction.get('index')
+##################################### PUSH #####################################
     if operator == 'push':
         if 'constant' in vm_instruction:
             asm_instruction.extend(encode_constant_to_d(vm_instruction['constant']))
         elif segment is not None:
             asm_instruction.extend(encode_segment_to_d(segment, index, static_prefix))
         asm_instruction.extend(_push_d)
+##################################### POP ######################################
+
     elif operator == 'pop':
         if segment in _segment_to_registers:
             asm_instruction.extend(encode_target_address_to_R13(segment, index, static_prefix))
             asm_instruction.extend(_pop_to_d)
-            asm_instruction.extend(['@R13', 'M=D'])
+            asm_instruction.extend(['@R13', 'A=M', 'M=D'])
         else:
             register = None
             asm_instruction.extend(_pop_to_d)
@@ -61,6 +65,21 @@ def encode(vm_instruction, static_prefix=None):
                     raise RuntimeError('missing static prefix')
                 register = f'{static_prefix}.{index}'
             asm_instruction.extend([f'@{register}', 'M=D'])
+
+################################### ARITHMETIC #################################
+    elif operator == 'add':
+        asm_instruction.extend(_pop_to_d)
+        asm_instruction.extend(_pop_to_a)
+        asm_instruction.append('D=A+D')
+        asm_instruction.extend(_push_d)
+    elif operator == 'sub':
+        asm_instruction.extend(_pop_to_d)
+        asm_instruction.extend(_pop_to_a)
+        asm_instruction.append('D=A-D')
+        asm_instruction.extend(_push_d)
+    elif operator == 'neg':
+        asm_instruction.extend('@SP, M=M-1, A=M, M=-M, @SP, M=M+1'.split(', '))
+
     asm_instruction.append('/////////////')
     asm_instruction.append('')
     return asm_instruction
