@@ -33,12 +33,14 @@ def encode_constant_to_d(constant):
 _push_d = '@SP, A=M, M=D, @SP, M=M+1'.split(', ')
 _pop_to_d = '@SP, M=M-1, A=M, D=M'.split(', ')
 _pop_to_a = '@SP, M=M-1, A=M, A=M'.split(', ')
+_jump_conditions = dict(eq='NE', gt='LT', lt='GT')
 
 def encode(vm_instruction, static_prefix=None):
     asm_instruction = [f'// {vm_instruction}']
     operator = vm_instruction['operation']
     segment = vm_instruction.get('segment')
     index = vm_instruction.get('index')
+    line = vm_instruction.get('instruction_line')
 ##################################### PUSH #####################################
     if operator == 'push':
         if 'constant' in vm_instruction:
@@ -46,8 +48,8 @@ def encode(vm_instruction, static_prefix=None):
         elif segment is not None:
             asm_instruction.extend(encode_segment_to_d(segment, index, static_prefix))
         asm_instruction.extend(_push_d)
-##################################### POP ######################################
 
+##################################### POP ######################################
     elif operator == 'pop':
         if segment in _segment_to_registers:
             asm_instruction.extend(encode_target_address_to_R13(segment, index, static_prefix))
@@ -79,6 +81,14 @@ def encode(vm_instruction, static_prefix=None):
         asm_instruction.extend(_push_d)
     elif operator == 'neg':
         asm_instruction.extend('@SP, M=M-1, A=M, M=-M, @SP, M=M+1'.split(', '))
+################################### COMPARISON #################################
+    elif operator in _jump_conditions:
+        asm_instruction.extend(_pop_to_d)
+        asm_instruction.extend(_pop_to_a)
+        asm_instruction.extend(
+            f'D=A-D, @SKIP1.{line}, D;J{_jump_conditions[operator]}, D=-1, '
+            f'@SKIP2.{line}, 0;JMP, (SKIP1.{line}), D=0, (SKIP2.{line})'.split(', '))
+        asm_instruction.extend(_push_d)
 
     asm_instruction.append('/////////////')
     asm_instruction.append('')

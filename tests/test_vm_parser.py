@@ -11,6 +11,14 @@ def test_sample_prog_parse():
         {'instruction_line': 3, 'operation': 'pop', 'segment': 'temp', 'index': '6', 'instruction_type': 'VM'},
         {'instruction_line': 5, 'operation': 'push', 'segment': 'that', 'index': '5', 'instruction_type': 'VM'},
         {'instruction_line': 6, 'operation': 'add', 'instruction_type': 'VM'},
+        {'instruction_line': 7, 'operation': 'sub', 'instruction_type': 'VM'},
+        {'instruction_line': 8, 'operation': 'neg', 'instruction_type': 'VM'},
+        {'instruction_line': 9, 'operation': 'eq', 'instruction_type': 'VM'},
+        {'instruction_line': 10, 'operation': 'gt', 'instruction_type': 'VM'},
+        {'instruction_line': 11, 'operation': 'lt', 'instruction_type': 'VM'},
+        {'instruction_line': 12, 'operation': 'and', 'instruction_type': 'VM'},
+        {'instruction_line': 13, 'operation': 'or', 'instruction_type': 'VM'},
+        {'instruction_line': 14, 'operation': 'not', 'instruction_type': 'VM'},
     )
 
     assert len(p) >= len(reference_instructions)
