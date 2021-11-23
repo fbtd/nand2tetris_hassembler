@@ -32,8 +32,13 @@ from mockparser import MockParser
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, D=A+D, @SP, A=M, M=D, @SP, M=M+1'),
     ({'operation': 'sub'},
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, D=A-D, @SP, A=M, M=D, @SP, M=M+1'),
-    ({'operation': 'neg'},
-        '@SP, M=M-1, A=M, M=-M, @SP, M=M+1'),
+    ({'operation': 'neg'}, '@SP, M=M-1, A=M, M=-M, @SP, M=M+1'),
+# logical
+    ({'operation': 'and'},
+        '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, D=A&D, @SP, A=M, M=D, @SP, M=M+1'),
+    ({'operation': 'or'},
+        '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, D=A|D, @SP, A=M, M=D, @SP, M=M+1'),
+    ({'operation': 'not'}, '@SP, M=M-1, A=M, M=!M, @SP, M=M+1'),
 # comparison  commands
     ({'operation': 'eq', 'instruction_line': 6},
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, '
@@ -41,11 +46,11 @@ from mockparser import MockParser
         '@SP, A=M, M=D, @SP, M=M+1'),
     ({'operation': 'gt', 'instruction_line': 7},
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, '
-        'D=A-D, @SKIP1.7, D;JLT, D=-1, @SKIP2.7, 0;JMP, (SKIP1.7), D=0, (SKIP2.7), '
+        'D=A-D, @SKIP1.7, D;JLE, D=-1, @SKIP2.7, 0;JMP, (SKIP1.7), D=0, (SKIP2.7), '
         '@SP, A=M, M=D, @SP, M=M+1'),
     ({'operation': 'lt', 'instruction_line': 8},
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, '
-        'D=A-D, @SKIP1.8, D;JGT, D=-1, @SKIP2.8, 0;JMP, (SKIP1.8), D=0, (SKIP2.8), '
+        'D=A-D, @SKIP1.8, D;JGE, D=-1, @SKIP2.8, 0;JMP, (SKIP1.8), D=0, (SKIP2.8), '
         '@SP, A=M, M=D, @SP, M=M+1'),
     ])
 def test_encode(instruction, expected):

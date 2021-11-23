@@ -33,7 +33,7 @@ def encode_constant_to_d(constant):
 _push_d = '@SP, A=M, M=D, @SP, M=M+1'.split(', ')
 _pop_to_d = '@SP, M=M-1, A=M, D=M'.split(', ')
 _pop_to_a = '@SP, M=M-1, A=M, A=M'.split(', ')
-_jump_conditions = dict(eq='NE', gt='LT', lt='GT')
+_jump_conditions = dict(eq='NE', gt='LE', lt='GE')
 
 def encode(vm_instruction, static_prefix=None):
     asm_instruction = [f'// {vm_instruction}']
@@ -79,8 +79,20 @@ def encode(vm_instruction, static_prefix=None):
         asm_instruction.extend(_pop_to_a)
         asm_instruction.append('D=A-D')
         asm_instruction.extend(_push_d)
+    elif operator == 'and':
+        asm_instruction.extend(_pop_to_d)
+        asm_instruction.extend(_pop_to_a)
+        asm_instruction.append('D=A&D')
+        asm_instruction.extend(_push_d)
+    elif operator == 'or':
+        asm_instruction.extend(_pop_to_d)
+        asm_instruction.extend(_pop_to_a)
+        asm_instruction.append('D=A|D')
+        asm_instruction.extend(_push_d)
     elif operator == 'neg':
         asm_instruction.extend('@SP, M=M-1, A=M, M=-M, @SP, M=M+1'.split(', '))
+    elif operator == 'not':
+        asm_instruction.extend('@SP, M=M-1, A=M, M=!M, @SP, M=M+1'.split(', '))
 ################################### COMPARISON #################################
     elif operator in _jump_conditions:
         asm_instruction.extend(_pop_to_d)
