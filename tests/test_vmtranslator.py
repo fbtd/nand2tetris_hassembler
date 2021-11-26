@@ -54,6 +54,7 @@ from mockparser import MockParser
         '@SP, A=M, M=D, @SP, M=M+1'),
     ])
 def test_encode(instruction, expected):
+    vmt = t.VmTranslator()
     expected_list = expected.split(', ')
-    translated_list = [l for l in t.encode(instruction, 'prog') if (not l.startswith('//') and l)]
+    translated_list = [l for l in vmt.encode(instruction, 'prog') if (not l.startswith('//') and l)]
     assert translated_list == expected_list
