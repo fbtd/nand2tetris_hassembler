@@ -45,3 +45,22 @@ def test_rewind():
     assert i['instruction_line'] == 2
     i = next(p)
     assert i['instruction_line'] == 3
+
+
+test_branching_prog = Path(__file__).parent / 'BranchingProg.vm'
+def test_branching_prog_parse():
+    p = VmParser(test_branching_prog)
+    reference_instructions = (
+        {'instruction_line': 2, 'operation': 'label', 'label': 'SECOND_LINE', 'instruction_type': 'VM'},
+        {'instruction_line': 3, 'operation': 'label', 'label': 'Third$line.3', 'instruction_type': 'VM'},
+        {'instruction_line': 5, 'operation': 'goto', 'destination': 'SECOND_LINE', 'instruction_type': 'VM'},
+        {'instruction_line': 6, 'operation': 'if-goto', 'destination': 'SECOND_LINE', 'instruction_type': 'VM'},
+        {'instruction_line': 8, 'operation': 'function', 'name': 'f1', 'nvars': '2', 'instruction_type': 'VM'},
+        {'instruction_line': 9, 'operation': 'call', 'name': 'f1', 'nargs': '3', 'instruction_type': 'VM'},
+        {'instruction_line': 10, 'operation': 'return', 'instruction_type': 'VM'},
+    )
+
+    assert len(p) >= len(reference_instructions)
+
+    for instruction, reference_instruction in zip(p, reference_instructions):
+        assert instruction == reference_instruction

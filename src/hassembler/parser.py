@@ -40,7 +40,6 @@ class Parser:
 
             instruction = {'instruction_line': self.instruction_line}
 
-
             for pattern, instruction_type, instruction_increment in self.patterns:
                 m = re.search(pattern, line)
                 if m is None: continue
@@ -61,15 +60,15 @@ class Parser:
     def close(self):
         self.f.close()
 
+_symbol = '[a-zA-Z_.$:][a-zA-Z0-9_.$:]*'
 
 class AsmParser(Parser):
     def __init__(self, source_file):
         super().__init__(source_file)
-        symbol = '[a-zA-Z_.$:][a-zA-Z0-9_.$:]*'
         valid_chars = '[-+|&!01ADMJGTEQLNP]'
         self.patterns = (
         #   (pattern, instruction_type, instruction_increment)
-            (f'^@(?P<symbol>{symbol})', 'A', 1),
+            (f'^@(?P<symbol>{_symbol})', 'A', 1),
             (r'^@(?P<value>[0-9]+)', 'A', 1),
             (r'^@(?P<value>[0-9]+)', 'A', 1),
             (rf'^(?P<dest>{valid_chars}+)=(?P<comp>{valid_chars}+);(?P<jump>{valid_chars}+)', 'C', 1),
@@ -86,9 +85,16 @@ class VmParser(Parser):
         arithmetic_patterns = (f'(?P<operation>{arithmetic_commands})', 'VM', None)
 
         segments = 'argument|local|static|this|that|pointer|temp'
-        stack_operation = f'(?P<operation>(push|pop)) +(?P<segment>({segments})) +(?P<index>\\d+)'
+        stack_operation = f'(?P<operation>push|pop) +(?P<segment>{segments}) +(?P<index>\\d+)'
         stack_pattern = (stack_operation, 'VM', None)
+        stack_constant_pattern = ('(?P<operation>push|pop) +constant +(?P<constant>\\d+)', 'VM', None)
 
-        stack_constant_pattern = (f'(?P<operation>(push|pop)) +constant +(?P<constant>\\d+)', 'VM', None)
+        label_pattern = (f'(?P<operation>label) +(?P<label>{_symbol})', 'VM', None)
+        goto_pattern = (f'(?P<operation>(?:if-)?goto) +(?P<destination>{_symbol})', 'VM', None)
 
-        self.patterns = (arithmetic_patterns, stack_pattern, stack_constant_pattern)
+        function_pattern = ('(?P<operation>function) +(?P<name>\\S+) +(?P<nvars>\\d+)', 'VM', None)
+        call_pattern = ('(?P<operation>call) +(?P<name>\\S+) +(?P<nargs>\\d+)', 'VM', None)
+        return_pattern = (f'(?P<operation>return)', 'VM', None)
+
+        self.patterns = (arithmetic_patterns, stack_pattern, stack_constant_pattern,
+                label_pattern, goto_pattern, function_pattern, call_pattern, return_pattern)

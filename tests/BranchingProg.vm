@@ -1,0 +1,10 @@
+// first line
+label SECOND_LINE
+label Third$line.3
+
+goto SECOND_LINE
+if-goto SECOND_LINE
+
+function f1 2
+call f1 3
+return
