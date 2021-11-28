@@ -15,7 +15,7 @@ from mockparser import MockParser
     ({'operation': 'push', 'segment': 'temp', 'index': '3'},
         '@R8, D=M, @SP, A=M, M=D, @SP, M=M+1'),
     ({'operation': 'push', 'segment': 'static', 'index': '3'},
-        '@prog.3, D=M, @SP, A=M, M=D, @SP, M=M+1'),
+        '@Prog.3, D=M, @SP, A=M, M=D, @SP, M=M+1'),
 # pop
     ({'operation': 'pop', 'segment': 'local', 'index': '3'},
         '@3, D=A, @LCL, A=M, A=A+D, D=A, @R13, M=D, @SP, M=M-1, A=M, D=M, @R13, A=M, M=D'),
@@ -26,7 +26,7 @@ from mockparser import MockParser
     ({'operation': 'pop', 'segment': 'temp', 'index': '3'},
         '@SP, M=M-1, A=M, D=M, @R8, M=D'),
     ({'operation': 'pop', 'segment': 'static', 'index': '3'},
-        '@SP, M=M-1, A=M, D=M, @prog.3, M=D'),
+        '@SP, M=M-1, A=M, D=M, @Prog.3, M=D'),
 # arithmetic
     ({'operation': 'add'},
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, D=A+D, @SP, A=M, M=D, @SP, M=M+1'),
@@ -52,9 +52,16 @@ from mockparser import MockParser
         '@SP, M=M-1, A=M, D=M, @SP, M=M-1, A=M, A=M, '
         'D=A-D, @SKIP1.8, D;JGE, D=-1, @SKIP2.8, 0;JMP, (SKIP1.8), D=0, (SKIP2.8), '
         '@SP, A=M, M=D, @SP, M=M+1'),
+# comparison  commands
+    ({'operation': 'label', 'label': 'LABEL1'}, '(Prog.fun$LABEL1)'),
+    ({'operation': 'goto', 'destination': 'LABEL1'}, '@Prog.fun$LABEL1, 0;JMP'),
+    ({'operation': 'if-goto', 'destination': 'LABEL1'},
+        '@SP, M=M-1, A=M, D=M, @Prog.fun$LABEL1, D;JNE'),
     ])
 def test_encode(instruction, expected):
-    vmt = t.VmTranslator()
+    vmt = t.VmTranslator(static_prefix='Prog')
+    vmt.current_function = 'fun'
+#   vmt.encode({'operation': 'function', 'name': 'f1', 'nargs': '1'})
     expected_list = expected.split(', ')
-    translated_list = [l for l in vmt.encode(instruction, 'prog') if (not l.startswith('//') and l)]
+    translated_list = [l for l in vmt.encode(instruction) if (not l.startswith('//') and l)]
     assert translated_list == expected_list

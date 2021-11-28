@@ -10,11 +10,12 @@ _pop_to_a = '@SP, M=M-1, A=M, A=M'.split(', ')
 _jump_conditions = dict(eq='NE', gt='LE', lt='GE')
 
 class VmTranslator:
-    def __init__(self):
-        pass
+    current_function = ''
+    def __init__(self, static_prefix=None):
+        self.static_prefix = static_prefix
 
     @staticmethod
-    def encode_target_address_to_R13(segment, index, static_prefix=None):
+    def encode_target_address_to_R13(segment, index):
         register = None
         if segment in _segment_to_registers:
             register = _segment_to_registers[segment]
@@ -41,24 +42,32 @@ class VmTranslator:
     def encode_constant_to_d(constant):
         return [f'@{constant}', 'D=A']
 
-    def encode(self, vm_instruction, static_prefix=None):
+    def label_with_prefix(self, label):
+        return f'{self.static_prefix}.{self.current_function}${label}'
+
+    def encode(self, vm_instruction):
         asm_instruction = [f'// {vm_instruction}']
         operator = vm_instruction['operation']
         segment = vm_instruction.get('segment')
         index = vm_instruction.get('index')
         line = vm_instruction.get('instruction_line')
-    ##################################### PUSH #####################################
+        label = vm_instruction.get('label')
+        name = vm_instruction.get('name')
+        destination = vm_instruction.get('destination')
+        nargs = vm_instruction.get('nargs')
+        vargs = vm_instruction.get('vargs')
+    ##################################### PUSH ##################################
         if operator == 'push':
             if 'constant' in vm_instruction:
                 asm_instruction.extend(self.encode_constant_to_d(vm_instruction['constant']))
             elif segment is not None:
-                asm_instruction.extend(self.encode_segment_to_d(segment, index, static_prefix))
+                asm_instruction.extend(self.encode_segment_to_d(segment, index, self.static_prefix))
             asm_instruction.extend(_push_d)
 
-    ##################################### POP ######################################
+    ##################################### POP ###################################
         elif operator == 'pop':
             if segment in _segment_to_registers:
-                asm_instruction.extend(self.encode_target_address_to_R13(segment, index, static_prefix))
+                asm_instruction.extend(self.encode_target_address_to_R13(segment, index))
                 asm_instruction.extend(_pop_to_d)
                 asm_instruction.extend(['@R13', 'A=M', 'M=D'])
             else:
@@ -69,12 +78,12 @@ class VmTranslator:
                 elif segment == 'temp':
                     register = f'R{int(index) + 5}'
                 elif segment == 'static':
-                    if static_prefix is None:
+                    if self.static_prefix is None:
                         raise RuntimeError('missing static prefix')
-                    register = f'{static_prefix}.{index}'
+                    register = f'{self.static_prefix}.{index}'
                 asm_instruction.extend([f'@{register}', 'M=D'])
 
-    ################################### ARITHMETIC #################################
+    ################################### ARITHMETIC ##############################
         elif operator == 'add':
             asm_instruction.extend(_pop_to_d)
             asm_instruction.extend(_pop_to_a)
@@ -99,6 +108,7 @@ class VmTranslator:
             asm_instruction.extend('@SP, M=M-1, A=M, M=-M, @SP, M=M+1'.split(', '))
         elif operator == 'not':
             asm_instruction.extend('@SP, M=M-1, A=M, M=!M, @SP, M=M+1'.split(', '))
+
     ################################### COMPARISON #################################
         elif operator in _jump_conditions:
             asm_instruction.extend(_pop_to_d)
@@ -108,6 +118,16 @@ class VmTranslator:
                 f'@SKIP2.{line}, 0;JMP, (SKIP1.{line}), D=0, (SKIP2.{line})'.split(', '))
             asm_instruction.extend(_push_d)
 
+    ################################### BRANCHING ##############################
+        elif operator == 'label':
+            asm_instruction.append(f'({self.label_with_prefix(label)})')
+        elif operator == 'goto':
+            asm_instruction.extend(f'@{self.label_with_prefix(destination)}, 0;JMP'.split(', '))
+        elif operator == 'if-goto':
+            asm_instruction.extend(_pop_to_d)
+            asm_instruction.extend(f'@{self.label_with_prefix(destination)}, D;JNE'.split(', '))
+
+    ################################### FUNCTION ###############################
         asm_instruction.append('/////////////')
         asm_instruction.append('')
         return asm_instruction
@@ -117,13 +137,13 @@ def main(source_file=None):
     if source_file is None:
         source_file = sys.argv[1]
     parser = VmParser(source_file)
-    vmt = VmTranslator()
 
     dest_file = pathlib.Path(source_file).with_suffix('.asm')
     basename = pathlib.Path(source_file).with_suffix('')
+    vmt = VmTranslator(static_prefix=basename)
     with open(dest_file, 'w') as fout:
         for instruction in parser:
-            for encoded_instruction in vmt.encode(instruction, basename):
+            for encoded_instruction in vmt.encode(instruction):
                 fout.write(encoded_instruction)
                 fout.write('\n')
 
