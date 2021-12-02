@@ -3,9 +3,12 @@ from pathlib import Path
 import hassembler.vmtranslator as t
 from mockparser import MockParser
 
+def keep_only_commands(commands):
+    return [l for l in commands if (not l.startswith('//') and l)]
+
 @pytest.mark.parametrize('instruction,expected', [
 # push
-    ({'operation': 'push', 'constant': '510'}, '@510, D=A, @SP, A=M, M=D, @SP, M=M+1'),
+    ({'operation': 'push', 'constant': '510'},  '@510, D=A, @SP, A=M, M=D, @SP, M=M+1'),
     ({'operation': 'push', 'segment': 'local', 'index': '3'},
         '@3, D=A, @LCL, A=M, A=A+D, D=M, @SP, A=M, M=D, @SP, M=M+1'),
     ({'operation': 'push', 'segment': 'pointer', 'index': '0'},
@@ -57,11 +60,55 @@ from mockparser import MockParser
     ({'operation': 'goto', 'destination': 'LABEL1'}, '@Prog.fun$LABEL1, 0;JMP'),
     ({'operation': 'if-goto', 'destination': 'LABEL1'},
         '@SP, M=M-1, A=M, D=M, @Prog.fun$LABEL1, D;JNE'),
+# return
+    ({'operation': 'return'},
+        '@LCL, D=M, @R13, M=D, '            # R13 := LCL
+        '@5, D=D-A, @R12, M=D, '            # R12 := (*LCL) - 5
+        '@SP, M=M-1, A=M, D=M, @ARG, A=M, M=D, ' # pop to *ARG
+        '@ARG, D=M+1, @SP, M=D, '           # SP = ARG + 1
+        '@R13, M=M-1, A=M, D=M, @THAT, M=D, '    # THAT = *(--R13
+        '@R13, M=M-1, A=M, D=M, @THIS, M=D, '    # THIS = *(--R13)
+        '@R13, M=M-1, A=M, D=M, @ARG, M=D, '     # ARG = *(--R13)
+        '@R13, M=M-1, A=M, D=M, @LCL, M=D, '     # LCL = *(--R13)
+        '@R12, A=M, 0;JMP'                  # jump to R12
+        ),
     ])
 def test_encode(instruction, expected):
     vmt = t.VmTranslator(static_prefix='Prog')
-    vmt.current_function = 'fun'
+    vmt.current_function = 'Prog.fun'
 #   vmt.encode({'operation': 'function', 'name': 'f1', 'nargs': '1'})
     expected_list = expected.split(', ')
-    translated_list = [l for l in vmt.encode(instruction) if (not l.startswith('//') and l)]
-    assert translated_list == expected_list
+    assert keep_only_commands(vmt.encode(instruction)) == expected_list
+
+def test_encode_function():
+    vmt = t.VmTranslator(static_prefix='Prog')
+    instruction_f0 = {'operation': 'function', 'name': 'Prog.f0', 'nvars': '0'}
+    assert keep_only_commands(vmt.encode(instruction_f0)) == ['(Prog.f0)']
+    assert vmt.current_function == 'Prog.f0'
+
+    instruction_f1 = {'operation': 'function', 'name': 'Prog.f1', 'nvars': '1'}
+    assert keep_only_commands(vmt.encode(instruction_f1)) == '(Prog.f1), @SP, A=M, M=0, @SP, M=M+1'.split(', ')
+    assert vmt.current_function == 'Prog.f1'
+
+def test_encode_call():
+    vmt = t.VmTranslator(static_prefix='Prog')
+    vmt.current_function = 'Prog.caller'
+    vmt.i = 1
+    expected_pattern = (
+        '@Prog.caller$ret.{i}, D=A, @SP, A=M, M=D, @SP, M=M+1, ' # push return address
+        '@LCL, D=M, @SP, A=M, M=D, @SP, M=M+1, '                 # push LCL, ARG, THIS and THAT
+        '@ARG, D=M, @SP, A=M, M=D, @SP, M=M+1, ' 
+        '@THIS, D=M, @SP, A=M, M=D, @SP, M=M+1, ' 
+        '@THAT, D=M, @SP, A=M, M=D, @SP, M=M+1, ' 
+        '@SP, D=M, @{five_plus_nargs}, D=D-A, @ARG, M=D, '       # ARG = SP - 5 - nargs
+        '@SP, D=M, @LCL, M=D, '                                  # LS = SP
+        '@Prog.callee, 0;JMP, '                                  # goto callee
+        '(Prog.caller$ret.{i})')                                 # inject return address
+
+    instruction_call_f0 = {'operation': 'call', 'name': 'Prog.callee', 'nargs': '0'}
+    expected = expected_pattern.format(i=1, five_plus_nargs=5).split(', ')
+    assert keep_only_commands(vmt.encode(instruction_call_f0)) == expected
+
+    instruction_call_f2 = {'operation': 'call', 'name': 'Prog.callee', 'nargs': '2'}
+    expected = expected_pattern.format(i=2, five_plus_nargs=7).split(', ')
+    assert keep_only_commands(vmt.encode(instruction_call_f2)) == expected

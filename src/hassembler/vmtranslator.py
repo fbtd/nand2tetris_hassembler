@@ -5,12 +5,16 @@ import sys
 _segment_to_registers = dict(local='LCL', argument='ARG', this='THIS', that='THAT')
 _pointer_index_to_register = {'0': 'THIS', '1': 'THAT'}
 _push_d = '@SP, A=M, M=D, @SP, M=M+1'.split(', ')
+_push_0_to_stack = '@SP, A=M, M=0, @SP, M=M+1'.split(', ')
 _pop_to_d = '@SP, M=M-1, A=M, D=M'.split(', ')
 _pop_to_a = '@SP, M=M-1, A=M, A=M'.split(', ')
 _jump_conditions = dict(eq='NE', gt='LE', lt='GE')
 
+_push_segment_to_stack_pattern = '@{segment}, D=M, @SP, A=M, M=D, @SP, M=M+1, '
+
 class VmTranslator:
     current_function = ''
+    i = 0
     def __init__(self, static_prefix=None):
         self.static_prefix = static_prefix
 
@@ -42,8 +46,8 @@ class VmTranslator:
     def encode_constant_to_d(constant):
         return [f'@{constant}', 'D=A']
 
-    def label_with_prefix(self, label):
-        return f'{self.static_prefix}.{self.current_function}${label}'
+#   def label_with_prefix(self, label):
+#       return f'{self.static_prefix}.{self.current_function}${label}'
 
     def encode(self, vm_instruction):
         asm_instruction = [f'// {vm_instruction}']
@@ -54,8 +58,8 @@ class VmTranslator:
         label = vm_instruction.get('label')
         name = vm_instruction.get('name')
         destination = vm_instruction.get('destination')
-        nargs = vm_instruction.get('nargs')
-        vargs = vm_instruction.get('vargs')
+        nargs = int(vm_instruction.get('nargs') or 0)
+        nvars = int(vm_instruction.get('nvars') or 0)
     ##################################### PUSH ##################################
         if operator == 'push':
             if 'constant' in vm_instruction:
@@ -120,14 +124,48 @@ class VmTranslator:
 
     ################################### BRANCHING ##############################
         elif operator == 'label':
-            asm_instruction.append(f'({self.label_with_prefix(label)})')
+            asm_instruction.append(f'({self.current_function}${label})')
         elif operator == 'goto':
-            asm_instruction.extend(f'@{self.label_with_prefix(destination)}, 0;JMP'.split(', '))
+            asm_instruction.extend(f'@{self.current_function}${destination}, 0;JMP'.split(', '))
         elif operator == 'if-goto':
             asm_instruction.extend(_pop_to_d)
-            asm_instruction.extend(f'@{self.label_with_prefix(destination)}, D;JNE'.split(', '))
+            asm_instruction.extend(f'@{self.current_function}${destination}, D;JNE'.split(', '))
 
     ################################### FUNCTION ###############################
+        elif operator == 'function':
+            self.current_function = name
+            self.i = 1
+            asm_instruction.append(f'({name})')
+            for _ in range(int(nvars)):
+                asm_instruction.extend(_push_0_to_stack)
+
+        elif operator == 'call':
+            asm_instruction.extend(                 # push return address
+        f'@Prog.caller$ret.{self.i}, D=A, @SP, A=M, M=D, @SP, M=M+1'.split(', '))
+
+            for s in ['LCL', 'ARG', 'THIS', 'THAT']:
+                asm_instruction.extend(_push_segment_to_stack_pattern.format(segment=s).split(', '))
+            asm_instruction.extend((                    # ARG = SP - 5 - nargs
+               f'@SP, D=M, @{5+nargs}, D=D-A, @ARG, M=D, '
+                '@SP, D=M, @LCL, M=D, '                 # LS = SP
+               f'@{name}, 0;JMP, '                      # goto callee
+               f'({self.current_function}$ret.{self.i})').split(', '))   # inject return address
+            self.i += 1
+
+        elif operator == 'return':
+            asm_instruction.extend((
+                '@LCL, D=M, @R13, M=D, '            # R13 := LCL
+                '@5, D=D-A, @R12, M=D, '            # R12 := (*LCL) - 5
+                '@SP, M=M-1, A=M, D=M, @ARG, A=M, M=D, ' # pop to ARG
+                '@ARG, D=M+1, @SP, M=D, '           # SP = ARG + 1
+                '@R13, M=M-1, A=M, D=M, @THAT, M=D, '    # THAT = *(--R13
+                '@R13, M=M-1, A=M, D=M, @THIS, M=D, '    # THIS = *(--R13)
+                '@R13, M=M-1, A=M, D=M, @ARG, M=D, '     # ARG = *(--R13)
+                '@R13, M=M-1, A=M, D=M, @LCL, M=D, '     # LCL = *(--R13)
+                '@R12, A=M, 0;JMP'                  # jump to R12
+                ).split(', '))
+
+
         asm_instruction.append('/////////////')
         asm_instruction.append('')
         return asm_instruction
