@@ -62,15 +62,15 @@ def keep_only_commands(commands):
         '@SP, M=M-1, A=M, D=M, @Prog.fun$LABEL1, D;JNE'),
 # return
     ({'operation': 'return'},
-        '@LCL, D=M, @R13, M=D, '            # R13 := LCL
-        '@5, D=D-A, @R12, M=D, '            # R12 := (*LCL) - 5
+        '@LCL, D=M, @R13, M=D, '                 # R13 := LCL
+        '@5, A=D-A, D=M, @R12, M=D, '            # R12 := (*LCL) - 5
         '@SP, M=M-1, A=M, D=M, @ARG, A=M, M=D, ' # pop to *ARG
-        '@ARG, D=M+1, @SP, M=D, '           # SP = ARG + 1
+        '@ARG, D=M+1, @SP, M=D, '                # SP = ARG + 1
         '@R13, M=M-1, A=M, D=M, @THAT, M=D, '    # THAT = *(--R13
         '@R13, M=M-1, A=M, D=M, @THIS, M=D, '    # THIS = *(--R13)
         '@R13, M=M-1, A=M, D=M, @ARG, M=D, '     # ARG = *(--R13)
         '@R13, M=M-1, A=M, D=M, @LCL, M=D, '     # LCL = *(--R13)
-        '@R12, A=M, 0;JMP'                  # jump to R12
+        '@R12, A=M, 0;JMP'                       # jump to R12
         ),
     ])
 def test_encode(instruction, expected):

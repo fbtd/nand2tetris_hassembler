@@ -36,12 +36,12 @@ class Parser:
             line = line.replace('\t', '')
             line = line.replace('\n', '')
             if not line: continue
-            if re.search('^//', line) is not None: continue
+            if re.search('^\\s*//', line) is not None: continue
 
             instruction = {'instruction_line': self.instruction_line}
 
             for pattern, instruction_type, instruction_increment in self.patterns:
-                m = re.search(pattern, line)
+                m = re.search('^\\s*' + pattern, line)
                 if m is None: continue
                 if None in m.groups(): continue
                 gd = m.groupdict()

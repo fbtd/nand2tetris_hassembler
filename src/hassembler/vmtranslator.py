@@ -141,7 +141,7 @@ class VmTranslator:
 
         elif operator == 'call':
             asm_instruction.extend(                 # push return address
-        f'@Prog.caller$ret.{self.i}, D=A, @SP, A=M, M=D, @SP, M=M+1'.split(', '))
+        f'@{self.current_function}$ret.{self.i}, D=A, @SP, A=M, M=D, @SP, M=M+1'.split(', '))
 
             for s in ['LCL', 'ARG', 'THIS', 'THAT']:
                 asm_instruction.extend(_push_segment_to_stack_pattern.format(segment=s).split(', '))
@@ -154,15 +154,15 @@ class VmTranslator:
 
         elif operator == 'return':
             asm_instruction.extend((
-                '@LCL, D=M, @R13, M=D, '            # R13 := LCL
-                '@5, D=D-A, @R12, M=D, '            # R12 := (*LCL) - 5
+                '@LCL, D=M, @R13, M=D, '                 # R13 := LCL
+                '@5, A=D-A, D=M, @R12, M=D, '            # R12 := (*LCL) - 5
                 '@SP, M=M-1, A=M, D=M, @ARG, A=M, M=D, ' # pop to ARG
-                '@ARG, D=M+1, @SP, M=D, '           # SP = ARG + 1
+                '@ARG, D=M+1, @SP, M=D, '                # SP = ARG + 1
                 '@R13, M=M-1, A=M, D=M, @THAT, M=D, '    # THAT = *(--R13
                 '@R13, M=M-1, A=M, D=M, @THIS, M=D, '    # THIS = *(--R13)
                 '@R13, M=M-1, A=M, D=M, @ARG, M=D, '     # ARG = *(--R13)
                 '@R13, M=M-1, A=M, D=M, @LCL, M=D, '     # LCL = *(--R13)
-                '@R12, A=M, 0;JMP'                  # jump to R12
+                '@R12, A=M, 0;JMP'                       # jump to R12
                 ).split(', '))
 
 
@@ -170,20 +170,36 @@ class VmTranslator:
         asm_instruction.append('')
         return asm_instruction
 
+def get_bootstrap():
+#   bootstrap_list = '@256, D=A, @SP, M=D, @Sys.init, 0;JMP'.split(', ')
+    bootstrap_list = '@256, D=A, @SP, M=D'.split(', ')
+    return '/// BOOTSTRAP\n' + '\n'.join(bootstrap_list) + '\n'
 
-def main(source_file=None):
-    if source_file is None:
-        source_file = sys.argv[1]
-    parser = VmParser(source_file)
+def main(destination_file=None, source_files=None, bootstrap=None):
+    if destination_file is None:
+        destination_file = sys.argv[1]
+    if source_files is None:
+        source_files = sys.argv[2:]
 
-    dest_file = pathlib.Path(source_file).with_suffix('.asm')
-    basename = pathlib.Path(source_file).with_suffix('')
-    vmt = VmTranslator(static_prefix=basename)
-    with open(dest_file, 'w') as fout:
-        for instruction in parser:
-            for encoded_instruction in vmt.encode(instruction):
-                fout.write(encoded_instruction)
+    vmt = VmTranslator()
+    with open(destination_file, 'w') as fout:
+        if bootstrap is True or ('Sys.vm' in source_files and bootstrap is not False):
+            vmt.static_prefix = 'bootstrap'
+            vmt.current_function = 'bootstrap'
+            fout.write(get_bootstrap())
+            for instruction in vmt.encode({'operation': 'call', 'name': 'Sys.init', 'nargs': '0'}):
+                fout.write(instruction)
                 fout.write('\n')
+            fout.write('/////////////\n\n')
+
+        for source_file in source_files:
+            parser = VmParser(source_file)
+            basename = pathlib.Path(source_file).with_suffix('')
+            vmt.static_prefix = basename
+            for instruction in parser:
+                for encoded_instruction in vmt.encode(instruction):
+                    fout.write(encoded_instruction)
+                    fout.write('\n')
 
 if __name__ == '__main__':
     main()

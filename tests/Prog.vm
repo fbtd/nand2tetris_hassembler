@@ -1,6 +1,6 @@
 // comment
 push constant 510
-pop temp 6 // inline comment
+pop temp 6 // inline comment conining "and": and
 
 push that 5
     add
